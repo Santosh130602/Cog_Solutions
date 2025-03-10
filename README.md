@@ -73,7 +73,7 @@ Open [http://localhost:5173/](http://localhost:5173/) in your browser.
 
 ## Folder Structure
 ```
-task-management-app/
+cognocore/
 ├── server/
 │   ├── controllers/
 │   ├── models/
