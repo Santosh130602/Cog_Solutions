@@ -1,21 +1,39 @@
-import { useEffect, useState } from 'react';
-import { getTasks, deleteTask, completeTask, updateTask } from '../Apis/Api';
-import { Trash2, FileText, X, Loader2 } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { getTasks, completeTask, updateTask, reviseTask } from "../Apis/Api";
+import { FileText, X, Loader2, ChevronDown, ChevronUp, Link, Star } from "lucide-react";
+
+const dsaTopics = [
+  "Array", "String", "LinkedList", "Stack", "Queue", "Heap",
+  "Graph", "Tree", "Binary Tree", "Binary Search Tree",
+  "Recursion", "Backtracking", "Dynamic Programming",
+  "Greedy Algorithm", "Bit Manipulation", "Trie",
+  "Segment Tree", "Fenwick Tree", "Hashing", "Sorting",
+  "Searching", "Graph Algorithms", "Mathematical",
+  "Divide and Conquer"
+];
 
 const AllTaskList = ({ refresh }) => {
-  const [tasks, setTasks] = useState([]);
-  const [note, setNote] = useState('');
+  const [tasks, setTasks] = useState({});
+  const [note, setNote] = useState("");
   const [showNoteModal, setShowNoteModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [expandedTopics, setExpandedTopics] = useState({});
+  const [revising, setRevising] = useState(null);
 
   const fetchTasks = async () => {
     setLoading(true);
     try {
       const { data } = await getTasks();
-      setTasks(data);
+      if (typeof data === "object" && data !== null) {
+        setTasks(data);
+      } else {
+        console.error("API response is not an object:", data);
+        setTasks({});
+      }
     } catch (error) {
-      console.error('Failed to fetch tasks:', error);
+      console.error("Failed to fetch tasks:", error);
+      setTasks({});
     } finally {
       setLoading(false);
     }
@@ -25,25 +43,13 @@ const AllTaskList = ({ refresh }) => {
     fetchTasks();
   }, [refresh]);
 
-  const handleDelete = async (id) => {
-    setActionLoading(id);
-    try {
-      await deleteTask(id);
-      fetchTasks();
-    } catch (error) {
-      console.error('Failed to delete task:', error);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const handleComplete = async (id) => {
     setActionLoading(id);
     try {
       await completeTask(id);
       fetchTasks();
     } catch (error) {
-      console.error('Failed to complete task:', error);
+      console.error("Failed to complete task:", error);
     } finally {
       setActionLoading(null);
     }
@@ -53,14 +59,30 @@ const AllTaskList = ({ refresh }) => {
     setActionLoading(id);
     try {
       await updateTask(id, { note });
-      setNote('');
+      setNote("");
       setShowNoteModal(null);
       fetchTasks();
     } catch (error) {
-      console.error('Failed to add note:', error);
+      console.error("Failed to add note:", error);
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleRevise = async (id) => {
+    setRevising(id);
+    try {
+      await reviseTask(id);
+      fetchTasks();
+    } catch (error) {
+      console.error("Failed to mark task as repeated:", error);
+    } finally {
+      setRevising(null);
+    }
+  };
+
+  const toggleTopic = (topic) => {
+    setExpandedTopics((prev) => ({ ...prev, [topic]: !prev[topic] }));
   };
 
   if (loading) {
@@ -73,112 +95,89 @@ const AllTaskList = ({ refresh }) => {
 
   return (
     <div className="p-4 bg-gray-900 text-white rounded-xl w-full mx-auto overflow-x-auto">
-      <table className="w-full border-separate border-spacing-y-2">
-        <thead>
-          <tr className="text-center text-gray-400">
-            <th>Status</th>
-            <th>Task Title</th>
-            <th>Priority</th>
-            <th>Notes</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map((task) => (
-            <tr
-              key={task._id}
-              className={`bg-gray-800 rounded-lg ${task.completed ? 'opacity-70' : ''}`}
-            >
-              <td className="p-2 text-center">
-                {actionLoading === task._id ? (
-                  <Loader2 className="animate-spin text-green-500" size={20} />
-                ) : (
-                  <input
-                    type="checkbox"
-                    checked={task.completed}
-                    onChange={() => handleComplete(task._id)}
-                    className="accent-green-500"
-                  />
-                )}
-              </td>
-              <td className={`p-2 ${task.completed ? 'line-through text-gray-500' : ''}`}>
-                {task.title}
-              </td>
-              <td className="p-2 text-center">{task.priority}</td>
-              <td className="p-2 text-center">
-                <button
-                  onClick={() => {
-                    setShowNoteModal(task);
-                    setNote(task.note || '');
-                  }}
-                  className="text-blue-400 hover:text-blue-600"
-                >
-                  <FileText size={20} />
-                </button>
-              </td>
-              <td className="p-2 flex space-x-2 justify-center">
-                {actionLoading === task._id ? (
-                  <Loader2 className="animate-spin text-red-500" size={20} />
-                ) : (
-                  <button
-                    onClick={() => handleDelete(task._id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {dsaTopics.map((topic) => (
+        <div key={topic} className="mb-4">
+          <button
+            onClick={() => toggleTopic(topic)}
+            className="flex items-center justify-between w-full p-3 bg-gray-800 rounded-md"
+          >
+            <span className="text-lg font-semibold">{topic}</span>
+            {expandedTopics[topic] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </button>
 
-      {showNoteModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-11/12 max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl text-white">Add Note for Task</h2>
-              <button
-                onClick={() => {
-                  setShowNoteModal(null);
-                  setNote('');
-                }}
-                className="text-red-500 hover:text-red-700"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Write your note here..."
-              className="w-full p-2 bg-gray-800 text-white rounded-md mb-4 focus:outline-none border border-gray-600"
-              rows={4}
-            />
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => handleAddNote(showNoteModal._id)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-              >
-                {actionLoading === showNoteModal._id ? (
-                  <Loader2 className="animate-spin mx-auto" size={20} />
-                ) : (
-                  'Save Note'
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  setShowNoteModal(null);
-                  setNote('');
-                }}
-                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          {expandedTopics[topic] && (
+            <>
+              {tasks[topic] && tasks[topic].length > 0 ? (
+                <table className="w-full border-separate border-spacing-y-2 mt-2">
+                  <thead>
+                    <tr className="text-center text-gray-400">
+                      <th>Status</th>
+                      <th>Problem</th>
+                      <th>Repeated</th>
+                      <th>Notes</th>
+                      <th>Link</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tasks[topic].map((task) => (
+                      <tr key={task._id} className={`bg-gray-800 rounded-lg ${task.completed ? "opacity-70" : ""}`}>
+                        <td className="p-2 text-center">
+                          {actionLoading === task._id ? (
+                            <Loader2 className="animate-spin text-green-500" size={20} />
+                          ) : (
+                            <input
+                              type="checkbox"
+                              checked={task.completed}
+                              onChange={() => handleComplete(task._id)}
+                              className="accent-green-500"
+                            />
+                          )}
+                        </td>
+                        <td className={`p-2 text-center ${task.completed ? " text-gray-200" : ""}`}>{task.title}</td>
+                        <td className="p-2 text-center">
+                          <button
+                            onClick={() => handleRevise(task._id)}
+                            className={task.repeaded ? "text-yellow-400" : "text-gray-500 hover:text-yellow-400"}
+                          >
+                            {revising === task._id ? (
+                              <Loader2 className="animate-spin mx-auto" size={20} />
+                            ) : (
+                              <Star size={20} fill={task.repeaded ? "yellow" : "none"} />
+                            )}
+                          </button>
+                        </td>
+                        <td className="p-2 text-center">
+                          <button
+                            onClick={() => {
+                              setShowNoteModal(task);
+                              setNote(task.note || "");
+                            }}
+                            className="text-blue-400 hover:text-blue-600"
+                          >
+                            <FileText size={20} />
+                          </button>
+                        </td>
+                        <td className="p-2 text-center">
+                          <a
+                            href={task.problemLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-green-400 hover:text-green-600"
+                          >
+                            <Link size={20} />
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="p-4 text-center text-gray-400">No problems added under {topic}  🤷🏼‍♀️ 🤷🏼‍♀️</div>
+              )}
+            </>
+          )}
         </div>
-      )}
+      ))}
     </div>
   );
 };
